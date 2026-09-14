@@ -24,7 +24,7 @@ const getTraffic = (req, res) => {
 
 const analyzeWithImpact = (req, res) => {
   try {
-    const { before, after } = req.body;
+    const { before, after, endpoint } = req.body;
     if (!before || !after) {
       return res.status(400).json({ error: '"before" and "after" schemas are required' });
     }
@@ -36,7 +36,7 @@ const analyzeWithImpact = (req, res) => {
       .filter(c => c.change === 'FIELD_REMOVED')
       .map(c => c.path.replace(/^\.|^/, '').replace(/^\.$/, '')); // strip leading dot
 
-    const fieldImpacts = calculateImpact(removedFields);
+    const fieldImpacts = calculateImpact(removedFields, endpoint);
 
     // Aggregate affected traffic
     let maxAffectedPct = 0;
@@ -74,3 +74,4 @@ const getDemoProject = (req, res) => {
 };
 
 module.exports = { ingestObservation, getTraffic, analyzeWithImpact, getDemoProject };
+

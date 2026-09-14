@@ -30,3 +30,4 @@ function isAvailable() {
 }
 
 module.exports = { query, isAvailable, getPool };
+

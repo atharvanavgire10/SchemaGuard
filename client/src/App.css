@@ -1,3 +1,12 @@
+:root {
+  --accent: #70d69b;
+  --border: #252a31;
+  --text-muted: #aab1bb;
+  --text-primary: #f5f7fa;
+  --bg-card: #111419;
+  --bg-hover: #171a20;
+}
+
 * {
   box-sizing: border-box;
 }
