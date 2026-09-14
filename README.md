@@ -541,6 +541,9 @@ CREATE INDEX idx_analyses_project_id ON analyses(project_id);
 ## Docker Setup
 
 ```bash
+# Create Docker Compose credentials; choose a real local password.
+cp .env.example .env
+
 # Start everything (PostgreSQL + Backend + Frontend)
 docker-compose up --build
 

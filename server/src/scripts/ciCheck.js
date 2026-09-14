@@ -11,12 +11,24 @@ const base = process.env.SCHEMAGUARD_BASE_SHA;
 const head = process.env.SCHEMAGUARD_HEAD_SHA || 'HEAD';
 if (!base) throw new Error('SCHEMAGUARD_BASE_SHA is required');
 
-const changed = execFileSync('git', ['diff', '--name-only', `${base}...${head}`, '--', '*.schema.json'], { encoding: 'utf8' })
-  .split(/\r?\n/).filter(Boolean);
+const changed = execFileSync('git', ['diff', '--name-status', `${base}...${head}`, '--', '*.schema.json'], { encoding: 'utf8' })
+  .split(/\r?\n/).filter(Boolean)
+  .map(line => {
+    const [status, file] = line.split('\t');
+    return { status, file };
+  });
 const results = [];
-for (const file of changed) {
+for (const { status, file } of changed) {
+  if (status === 'D') {
+    results.push({
+      file,
+      classification: 'BREAKING',
+      changes: [{ path: '(root)', change: 'CONTRACT_REMOVED', classification: 'BREAKING', reason: `Schema contract "${file}" was removed.` }]
+    });
+    continue;
+  }
   const absolute = path.resolve(process.cwd(), '..', file);
-  if (!fs.existsSync(absolute)) continue; // deleted contracts require an explicit migration/schema replacement
+  if (!fs.existsSync(absolute)) continue;
   try {
     const before = JSON.parse(execFileSync('git', ['show', `${base}:${file}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
     const after = JSON.parse(fs.readFileSync(absolute, 'utf8'));
