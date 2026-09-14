@@ -2,13 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API = "http://localhost:5000";
-
-const CLASSIFICATION_COLOR = {
-  BREAKING: "#ff7777",
-  RISKY: "#e7b85c",
-  SAFE: "#70d69b"
-};
+const API = import.meta.env.VITE_API_URL || "";
 
 const SEVERITY_LABEL = {
   BREAKING: { label: "BREAKING", color: "#ff7777" },
@@ -220,14 +214,10 @@ function App() {
 
             <div className="scenarios">
               {demo.scenarios.map((scenario) => {
-                // Determine expected type from scenario id for styling
-                const isSafe = scenario.id === 'add-avatar' || scenario.id === 'add-metadata';
-                const isRisky = scenario.id === 'add-status-enum' || scenario.id === 'change-format';
-                const typeClass = isSafe ? 'safe' : isRisky ? 'risky' : 'breaking';
                 return (
                   <button
                     key={scenario.id}
-                    className={`scenario ${typeClass} ${
+                    className={`scenario ${
                       selected?.id === scenario.id ? "selected" : ""
                     }`}
                     onClick={() => {
@@ -307,7 +297,7 @@ function App() {
               {result.impact?.affectedTrafficPct > 0 && (
                 <div className="affected-clients">
                   <span className="clients-label">Affected consumers:</span>
-                  {['Android', 'iOS'].map(c => (
+                  {(result.impact?.clients ? Object.keys(result.impact.clients) : []).map(c => (
                     <span key={c} className="client-badge">{c}</span>
                   ))}
                 </div>
@@ -320,7 +310,7 @@ function App() {
                   <div className="detection-steps">
                     <div className="det-step">
                       <span className="det-label">1. Observed Production Contract</span>
-                      <code className="schema-preview">GET /users/:id → \{id: integer, name: string, email: string, avatar: string|null, status: enum\}</code>
+                      <code className="schema-preview">GET /users/:id → {"{"}id: integer, name: string, email: string, avatar: string|null, status: enum{"}"}</code>
                     </div>
                     <div className="det-step">
                       <span className="det-label">2. Proposed Contract</span>

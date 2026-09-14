@@ -6,3 +6,4 @@ const router = express.Router();
 router.post('/infer', infer);
 
 module.exports = router;
+

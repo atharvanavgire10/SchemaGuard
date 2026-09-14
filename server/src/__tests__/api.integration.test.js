@@ -1,20 +1,7 @@
 'use strict';
 const request = require('supertest');
 
-// We need to create a test app that doesn't start listening
-const express = require('express');
-const cors = require('cors');
-const demoRoutes = require('../routes/demoRoutes');
-const schemaRoutes = require('../routes/schemaRoutes');
-const compatibilityRoutes = require('../routes/compatibilityRoutes');
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.get('/health', (req, res) => res.json({ status: 'ok', service: 'schemaguard-api' }));
-app.use('/api/demo', demoRoutes);
-app.use('/api/schema', schemaRoutes);
-app.use('/api/compatibility', compatibilityRoutes);
+const app = require('../index');
 
 describe('GET /health', () => {
   test('returns ok', async () => {
@@ -106,4 +93,42 @@ describe('POST /api/compatibility/analyze', () => {
     const res = await request(app).post('/api/compatibility/analyze').send({ before: {} });
     expect(res.status).toBe(400);
   });
+
+  test('rejects schemas without a type', async () => {
+    const res = await request(app).post('/api/compatibility/analyze').send({ before: {}, after: {} });
+    expect(res.status).toBe(400);
+  });
 });
+
+describe('observation and GitHub validation', () => {
+  test('stores an observation without retaining its response payload', async () => {
+    const res = await request(app).post('/api/observe').send({
+      service: 'test-service', endpoint: '/users/1', client: 'web', response: { id: 1, email: 'a@example.com' }
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.stored).toBe(true);
+    expect(res.body.inferredSchema.properties.email.type).toBe('string');
+  });
+
+  test('rejects unsafe GitHub repository identifiers before network access', async () => {
+    const res = await request(app).post('/api/github/analyze-pr').send({
+      owner: '../internal', repo: 'repo', prNumber: 1,
+      before: { type: 'object', properties: {} }, after: { type: 'object', properties: {} }
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_REPOSITORY');
+  });
+
+  test('calculates impact from observed endpoint traffic', async () => {
+    await request(app).post('/api/observe').send({ service: 'impact-service', endpoint: '/orders/1', client: 'ios', response: { id: 1, total: 10 } });
+    await request(app).post('/api/observe').send({ service: 'impact-service', endpoint: '/orders/1', client: 'web', response: { id: 2 } });
+    const res = await request(app).post('/api/observe/analyze').send({
+      endpoint: '/orders/1',
+      before: { type: 'object', properties: { total: { type: 'integer' } } },
+      after: { type: 'object', properties: {} }
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.impact.fieldImpacts[0]).toMatchObject({ field: 'total', affectedTrafficPct: 50, affectedClients: ['ios'] });
+  });
+});
+

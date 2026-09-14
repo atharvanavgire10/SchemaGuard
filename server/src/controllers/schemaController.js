@@ -21,8 +21,9 @@ const infer = (req, res) => {
     return res.json({ schema });
   } catch (err) {
     console.error('Schema inference error:', err.message);
-    return res.status(500).json({ error: 'Schema inference failed', detail: err.message });
+    return res.status(500).json({ error: 'Schema inference failed' });
   }
 };
 
 module.exports = { infer };
+

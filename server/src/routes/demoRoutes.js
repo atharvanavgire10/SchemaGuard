@@ -59,7 +59,7 @@ router.post('/analyze', (req, res) => {
     });
   } catch (err) {
     console.error('Demo analyze error:', err.message);
-    return res.status(500).json({ error: 'Analysis failed', detail: err.message });
+    return res.status(500).json({ error: 'Analysis failed' });
   }
 });
 

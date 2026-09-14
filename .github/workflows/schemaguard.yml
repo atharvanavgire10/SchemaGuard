@@ -32,26 +32,13 @@ jobs:
         working-directory: server
 
       - name: Run SchemaGuard compatibility check
+        id: check
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SCHEMAGUARD_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SCHEMAGUARD_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SCHEMAGUARD_REPORT: /tmp/schemaguard-report.json
         run: |
-          # This script runs SchemaGuard against the PR
-          # In a real integration, you would:
-          # 1. Extract before/after schemas from the PR diff
-          # 2. POST to SchemaGuard API or run the CLI
-          # 3. Parse the result and fail if BREAKING
-          #
-          # For now, this demonstrates the workflow structure.
-          node -e "
-            const { analyze } = require('./src/services/compatibilityService');
-            // Example: load schemas from files changed in the PR
-            // before = require('./schemas/before.json');
-            // after = require('./schemas/after.json');
-            // const result = analyze(before, after);
-            // if (result.classification === 'BREAKING') process.exit(1);
-            console.log('SchemaGuard: No schema files to analyze in this run.');
-            console.log('To analyze schemas, add schema files to the paths filter above.');
-          "
+          node src/scripts/ciCheck.js
         working-directory: server
 
       - name: Post SchemaGuard comment
@@ -59,14 +46,19 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const classification = process.env.SCHEMAGUARD_RESULT || 'SAFE';
-            const score = process.env.SCHEMAGUARD_SCORE || '100';
+            const fs = require('fs');
+            const reportPath = '/tmp/schemaguard-report.json';
+            const report = fs.existsSync(reportPath) ? JSON.parse(fs.readFileSync(reportPath, 'utf8')) : { classification: 'SAFE', results: [] };
+            const classification = report.classification;
+            const score = classification === 'SAFE' ? 100 : 'review required';
+            const details = report.results.flatMap(r => r.changes.map(c => `- \`${r.file}\` · \`${c.path}\`: ${c.change}`)).join('\n');
             const body = classification === 'SAFE'
-              ? `## SchemaGuard ✅ No Breaking Changes\n\nCompatibility Score: ${score}/100\n\nAll API changes are backwards compatible.`
-              : `## SchemaGuard 🚨 Breaking Changes Detected\n\nCompatibility Score: ${score}/100\n\nReview required before merging.`;
+              ? `## SchemaGuard ✅ No Breaking Changes\n\nCompatibility Score: ${score}/100\n\n${report.results.length ? 'All changed schema contracts are backwards compatible.' : 'No changed *.schema.json contracts were found.'}`
+              : `## SchemaGuard ${classification === 'BREAKING' ? '🚨 Breaking Changes Detected' : '⚠️ Risky Changes Detected'}\n\nCompatibility Score: ${score}\n\n${details}\n\nReview required before merging.`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body
             });
+

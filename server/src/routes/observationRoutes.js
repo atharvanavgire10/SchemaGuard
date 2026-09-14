@@ -22,3 +22,4 @@ router.post('/analyze', analyzeWithImpact);
 router.get('/project', getDemoProject);
 
 module.exports = router;
+
