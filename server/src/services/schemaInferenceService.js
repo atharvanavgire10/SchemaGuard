@@ -4,17 +4,10 @@
  * SchemaGuard Schema Inference Service
  *
  * Infers a normalized JSON schema from one or more JSON observations.
- * Output format is a subset of JSON Schema (draft-07 inspired).
+ * Output format is a clean subset of JSON Schema (draft-07 inspired).
  *
  * Supported types: string, integer, number, boolean, null, object, array
  * Special: nullable fields, enum value tracking, nested objects, arrays of objects
- *
- * SCORING ALGORITHM (compatibility score, documented here):
- * Score starts at 100.
- * Each BREAKING change deducts 25 points (min 0).
- * Each RISKY change deducts 5 points.
- * SAFE changes do not deduct.
- * Final score = max(0, 100 - (breaking * 25) - (risky * 5))
  */
 
 /**
@@ -47,7 +40,7 @@ function inferSchema(value) {
     for (const [key, val] of Object.entries(value)) {
       properties[key] = inferSchema(val);
     }
-    return { type: 'object', properties };
+    return { type: 'object', properties, required: Object.keys(properties) };
   }
 
   if (type === 'array') {
@@ -65,7 +58,7 @@ function inferSchema(value) {
   // Primitive
   const schema = { type };
 
-  // Track observed enum values for strings
+  // Track observed enum values for strings (up to a reasonable threshold)
   if (type === 'string') {
     schema.enum = [value];
   }
@@ -75,50 +68,66 @@ function inferSchema(value) {
 
 /**
  * Merge two schema nodes produced by inferSchema.
- * This handles nullable, type conflicts, enum merging, etc.
+ * Handles nullable, union types, enum merging, nested objects, and arrays.
  */
 function mergeSchemas(a, b) {
   if (!a) return b;
   if (!b) return a;
 
-  const typesA = Array.isArray(a.type) ? a.type : [a.type];
-  const typesB = Array.isArray(b.type) ? b.type : [b.type];
+  const typesA = Array.isArray(a.type) ? a.type : (a.type ? [a.type] : []);
+  const typesB = Array.isArray(b.type) ? b.type : (b.type ? [b.type] : []);
 
-  // Combine types
+  // Combine types, preserving order and uniqueness
   const combined = [...new Set([...typesA, ...typesB])];
 
-  // Both are objects -> merge properties recursively
+  // If one or both are empty schemas (e.g. from empty array items {})
+  if (typesA.length === 0) return b;
+  if (typesB.length === 0) return a;
+
+  // Both contain objects -> merge properties recursively
   if (typesA.includes('object') && typesB.includes('object')) {
     const allKeys = new Set([
       ...Object.keys(a.properties || {}),
       ...Object.keys(b.properties || {})
     ]);
     const mergedProps = {};
+    const requiredA = new Set(Array.isArray(a.required) ? a.required : Object.keys(a.properties || {}));
+    const requiredB = new Set(Array.isArray(b.required) ? b.required : Object.keys(b.properties || {}));
+    const required = [];
     for (const key of allKeys) {
-      if (a.properties?.[key] && b.properties?.[key]) {
+      if (a.properties && a.properties[key] && b.properties && b.properties[key]) {
         mergedProps[key] = mergeSchemas(a.properties[key], b.properties[key]);
+        if (requiredA.has(key) && requiredB.has(key)) required.push(key);
       } else {
-        // Field only in one observation - mark as optional/nullable
-        const existing = a.properties?.[key] || b.properties?.[key];
-        mergedProps[key] = addNullable(existing);
+        // A missing property is optional, not evidence that its value is null.
+        const existing = (a.properties && a.properties[key]) || (b.properties && b.properties[key]);
+        mergedProps[key] = existing;
       }
     }
-    const result = { type: combined.length === 1 ? combined[0] : combined, properties: mergedProps };
-    return result;
-  }
-
-  // Both are arrays -> merge items
-  if (typesA.includes('array') && typesB.includes('array')) {
     return {
-      type: 'array',
-      items: mergeSchemas(a.items, b.items)
+      type: combined.length === 1 ? combined[0] : combined,
+      properties: mergedProps,
+      ...(required.length > 0 ? { required } : {})
     };
   }
 
-  // Merge enums for strings
+  // Both contain arrays -> merge items
+  if (typesA.includes('array') && typesB.includes('array')) {
+    return {
+      type: combined.length === 1 ? combined[0] : combined,
+      items: mergeSchemas(a.items || {}, b.items || {})
+    };
+  }
+
+  // Merged primitive or mixed types
   const result = { type: combined.length === 1 ? combined[0] : combined };
+
+  // Merge enums for strings if available, capped at 50 values to prevent explosion
   if (a.enum || b.enum) {
-    result.enum = [...new Set([...(a.enum || []), ...(b.enum || [])])];
+    const enumSet = new Set([...(a.enum || []), ...(b.enum || [])]);
+    if (enumSet.size <= 50) {
+      result.enum = [...enumSet];
+    }
   }
 
   return result;
@@ -129,18 +138,18 @@ function mergeSchemas(a, b) {
  */
 function addNullable(schema) {
   if (!schema) return { type: 'null' };
-  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  const types = Array.isArray(schema.type) ? schema.type : (schema.type ? [schema.type] : []);
   if (types.includes('null')) return schema;
   return { ...schema, type: [...types, 'null'] };
 }
 
 /**
  * Infer schema from multiple observations by merging them.
- * @param {Array} observations - array of JSON objects
+ * @param {Array} observations - array of JSON objects/values
  * @returns {object} merged schema
  */
 function inferFromMultiple(observations) {
-  if (!observations || observations.length === 0) {
+  if (!Array.isArray(observations) || observations.length === 0) {
     throw new Error('At least one observation is required');
   }
   let schema = inferSchema(observations[0]);
@@ -150,4 +159,4 @@ function inferFromMultiple(observations) {
   return schema;
 }
 
-module.exports = { inferSchema, inferFromMultiple, mergeSchemas, inferType };
+module.exports = { inferSchema, inferFromMultiple, mergeSchemas, inferType, addNullable };

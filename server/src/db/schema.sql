@@ -58,3 +58,4 @@ CREATE INDEX IF NOT EXISTS idx_observations_client ON observations(client);
 CREATE INDEX IF NOT EXISTS idx_contracts_endpoint_id ON contracts(endpoint_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_project_id ON analyses(project_id);
 CREATE INDEX IF NOT EXISTS idx_endpoints_project_id ON endpoints(project_id);
+

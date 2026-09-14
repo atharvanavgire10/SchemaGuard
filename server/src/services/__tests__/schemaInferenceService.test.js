@@ -93,15 +93,13 @@ describe('inferFromMultiple', () => {
     expect(s.properties.status.enum).toContain('inactive');
   });
 
-  test('marks field nullable when missing in some observations', () => {
+  test('marks field optional when missing in some observations without inventing null', () => {
     const s = inferFromMultiple([
       { id: 1, email: 'a@b.com' },
       { id: 2 }
     ]);
-    const emailTypes = Array.isArray(s.properties.email.type)
-      ? s.properties.email.type
-      : [s.properties.email.type];
-    expect(emailTypes).toContain('null');
+    expect(s.properties.email.type).toBe('string');
+    expect(s.required).toEqual(['id']);
   });
 
   test('handles conflicting types', () => {

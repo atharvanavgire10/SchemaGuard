@@ -13,6 +13,18 @@ const baseSchema = {
 };
 
 describe('Compatibility Engine - BREAKING changes', () => {
+  test('BREAKING: optional field made required', () => {
+    const before = { type: 'object', properties: { email: { type: 'string' } }, required: [] };
+    const after = { type: 'object', properties: { email: { type: 'string' } }, required: ['email'] };
+    const result = analyze(before, after);
+    expect(result.changes).toEqual(expect.arrayContaining([expect.objectContaining({ change: 'REQUIRED_ADDED', path: 'email' })]));
+  });
+
+  test('BREAKING: required field added', () => {
+    const before = { type: 'object', properties: {} };
+    const after = { type: 'object', properties: { region: { type: 'string' } }, required: ['region'] };
+    expect(analyze(before, after).classification).toBe('BREAKING');
+  });
   test('BREAKING: field removed (email)', () => {
     const after = {
       type: 'object',
@@ -123,6 +135,12 @@ describe('Compatibility Engine - BREAKING changes', () => {
 });
 
 describe('Compatibility Engine - RISKY changes', () => {
+  test('RISKY: field becomes nullable', () => {
+    const result = analyze({ type: 'object', properties: { name: { type: 'string' } } }, {
+      type: 'object', properties: { name: { type: ['string', 'null'] } }
+    });
+    expect(result.changes).toEqual(expect.arrayContaining([expect.objectContaining({ change: 'NULLABLE_ADDED', classification: 'RISKY' })]));
+  });
   test('RISKY: enum value added', () => {
     const after = {
       type: 'object',
@@ -207,3 +225,4 @@ describe('Scoring algorithm', () => {
     expect(result.score).toBeGreaterThanOrEqual(0);
   });
 });
+
