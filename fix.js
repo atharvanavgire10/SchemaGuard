@@ -1,9 +1,5 @@
 const fs = require('fs');
 let css = fs.readFileSync('client/src/App.css', 'utf-8');
-const badIndex = css.indexOf('. h e r o - t a g');
-if (badIndex !== -1) {
-  css = css.substring(0, badIndex).replace(/\x00/g, '');
-}
 const additions = `
 .hero-tag { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 1rem; }
 .hero-actions { display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; }
