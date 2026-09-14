@@ -320,7 +320,7 @@ function App() {
                   <div className="detection-steps">
                     <div className="det-step">
                       <span className="det-label">1. Observed Production Contract</span>
-                      <code className="schema-preview">GET /users/:id → \{id: integer, name: string, email: string, avatar: string|null, status: enum\}</code>
+                      <code className="schema-preview">GET /users/:id → {"{"}id: integer, name: string, email: string, avatar: string|null, status: enum{"}"}</code>
                     </div>
                     <div className="det-step">
                       <span className="det-label">2. Proposed Contract</span>
