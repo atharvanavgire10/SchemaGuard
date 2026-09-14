@@ -3,7 +3,7 @@ const { inferSchema, inferFromMultiple, mergeSchemas } = require('../schemaInfer
 
 describe('inferSchema', () => {
   test('infers integer', () => {
-    expect(inferSchema(42)).toEqual({ type: 'integer', enum: undefined }.type ? null : null);
+    expect(inferSchema(42)).toEqual({ type: 'integer' });
     const s = inferSchema(42);
     expect(s.type).toBe('integer');
   });
