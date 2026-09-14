@@ -6,6 +6,7 @@ require('dotenv').config();
 const demoRoutes = require('./routes/demoRoutes');
 const schemaRoutes = require('./routes/schemaRoutes');
 const compatibilityRoutes = require('./routes/compatibilityRoutes');
+const observationRoutes = require('./routes/observationRoutes');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.get('/health', (req, res) => {
 app.use('/api/demo', demoRoutes);
 app.use('/api/schema', schemaRoutes);
 app.use('/api/compatibility', compatibilityRoutes);
+app.use('/api/observe', observationRoutes);
 
 // 404 handler
 app.use((req, res) => {
