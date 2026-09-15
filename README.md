@@ -6,8 +6,9 @@
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](#building)
 [![License](https://img.shields.io/badge/license-ISC-blue)](#)
 
-Live Demo: https://schema-guard-chi.vercel.app/
 ---
+
+Live Demo: https://schema-guard-chi.vercel.app/
 
 ## Table of Contents
 
