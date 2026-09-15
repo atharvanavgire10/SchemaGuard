@@ -497,6 +497,34 @@ NODE_ENV=development
 
 > **Security:** Never commit `.env` to version control. It is in `.gitignore`.
 
+### Vercel + Neon
+
+Deploy this repository as one Vercel project from the repository root. The included
+`vercel.json` builds `client/` and forwards `/health` plus all `/api/*` requests to
+the exported Express application in `api/index.js`; no separate backend deployment
+or frontend API URL is required.
+
+Set these Vercel environment variables for the Production, Preview, and Development
+environments as appropriate:
+
+```env
+# Neon pooled PostgreSQL connection string (never commit this value)
+DATABASE_URL=postgresql://...
+
+# Required for Neon TLS with the existing pg Pool configuration
+DATABASE_SSL=true
+
+# The public Vercel origin allowed to call the API, for example:
+CLIENT_ORIGIN=https://your-project.vercel.app
+
+# Optional; enables GitHub PR comments
+GITHUB_TOKEN=...
+```
+
+Leave `VITE_API_URL` unset for this single-project deployment: the frontend defaults
+to same-origin `/api` requests. Set it only when deliberately hosting the API at a
+different origin. Local Vite development continues to proxy `/api` to port 5000.
+
 ---
 
 ## Database Setup
